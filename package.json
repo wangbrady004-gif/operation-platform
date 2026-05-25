@@ -1,0 +1,17 @@
+{
+  "name": "ops-platform-standalone",
+  "private": true,
+  "scripts": {
+    "start":   "concurrently --kill-others-on-fail --pad-prefix --names \"API,WEB,BOT-1,BOT-2,BOT-3\" --prefix-colors \"blueBright,greenBright,yellowBright,magentaBright,cyanBright\" \"npm run api\" \"npm run web\" \"npm run worker\" \"npm run worker\" \"npm run worker\"",
+    "start:1": "concurrently --kill-others-on-fail --pad-prefix --names \"API,WEB,BOT-1\" --prefix-colors \"blueBright,greenBright,yellowBright\" \"npm run api\" \"npm run web\" \"npm run worker\"",
+    "start:5": "concurrently --kill-others-on-fail --pad-prefix --names \"API,WEB,BOT-1,BOT-2,BOT-3,BOT-4,BOT-5\" --prefix-colors \"blueBright,greenBright,yellowBright,magentaBright,cyanBright,redBright,white\" \"npm run api\" \"npm run web\" \"npm run worker\" \"npm run worker\" \"npm run worker\" \"npm run worker\" \"npm run worker\"",
+    "api": "npm --prefix apps/api run start:dev",
+    "web": "npm --prefix apps/web run dev:webpack",
+    "worker": "wait-on http://127.0.0.1:8899/health && cd apps/worker && .venv/bin/python3 -m worker",
+    "install:all": "npm --prefix apps/api install && npm --prefix apps/web install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "wait-on": "^9.0.10"
+  }
+}

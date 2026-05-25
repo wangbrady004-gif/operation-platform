@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Ops">
+  <defs>
+    <linearGradient id="opsGradApple" x1="34" y1="22" x2="158" y2="170" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#34d399"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" rx="40" fill="url(#opsGradApple)"/>
+  <path fill="#fff" fill-opacity="0.95" d="M45 53h90a8.5 8.5 0 0 1 8.5 8.5v17a8.5 8.5 0 0 1-8.5 8.5H45a8.5 8.5 0 0 1-8.5-8.5v-17A8.5 8.5 0 0 1 45 53Zm0 48h56a8.5 8.5 0 0 1 8.5 8.5v17a8.5 8.5 0 0 1-8.5 8.5H45a8.5 8.5 0 0 1-8.5-8.5v-17A8.5 8.5 0 0 1 45 101Z"/>
+  <circle cx="135" cy="118" r="18" fill="#fff" fill-opacity="0.35"/>
+</svg>

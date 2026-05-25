@@ -1,0 +1,13 @@
+{
+  "profileKey": "PROFILE_YOUR_STORE_KEY",
+  "mobileNumber": "9000000000",
+  "password": "REPLACE_ME",
+  "bankId": "uuid-from-trustpay",
+  "api": "https://api.example.com/v1/bankResponse/create-bot-message",
+  "company": "uuid-company",
+  "lastUtrChatId": "-1234567890",
+  "merchant": "pp1",
+  "portalListingMid": "STOREFRONT_ABC12345",
+  "executableRelativePath": "tp_127_executabes/TP_PAYTM_TXN_YOURPROFILE_MID1.py",
+  "txnPass": "REPLACE_ME"
+}

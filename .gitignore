@@ -1,0 +1,13 @@
+apps/worker/.venv/
+apps/worker/__pycache__/
+*.pyc
+.DS_Store
+**/node_modules/
+**/dist/
+**/coverage/
+
+# Local env (use *.env.example templates)
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example

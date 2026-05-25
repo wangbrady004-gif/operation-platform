@@ -1,0 +1,1 @@
+# Laptop agent package (stub).
