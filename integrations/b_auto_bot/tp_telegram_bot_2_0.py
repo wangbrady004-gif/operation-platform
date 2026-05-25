@@ -3,18 +3,11 @@ import requests
 import trustpay_curl_2_0
 from loguru import logger
 import tp_settings_2_0
+from secrets import MEDIATOR_URLS
 glitch = '-4812272124'
 import random
 
-mediator_url = [
-    # f'https://api.telegram.org/bot8308745418:AAGuOIowA1X8usvARVfsKR2jM2biVFuN3oU/sendMessage',# pay-payny
-    # f'https://api.telegram.org/bot7967071898:AAG-_oDLJuN7E-RMCcLQXlWzWRSt80s4m_0/sendMessage',# pay-payny
-    f'https://api.telegram.org/bot7634849892:AAFmwCJq0Va0R9wO4ut3WQaUYBdER9umtA4/sendMessage',
-    f'https://api.telegram.org/bot7878606673:AAGp0450BAdGl2HZxeYWVBiRHwGUj4SP584/sendMessage',
-    f'https://api.telegram.org/bot7196060907:AAFNAZMsUzeSALCdz3TluFRIMU0MVLVJp4c/sendMessage',
-    f'https://api.telegram.org/bot7619219786:AAEDU_MiFtmeFkV8GrzgImXwfth4uJII1D8/sendMessage',
-    f'https://api.telegram.org/bot7712352576:AAGpVBQM6p3bltC3Md4OQgl2Yon7Nh0NdHk/sendMessage',
-]
+mediator_url = MEDIATOR_URLS
 
 from pathlib import Path
 

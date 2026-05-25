@@ -22,8 +22,7 @@ logger.add(
     level="INFO"         # log INFO and above
 )
 logger.info("This is an info message")
-chat_id = -4539594824
-bot_token = '7116070977:AAHvK3IiWF64kGdVVz3BlnX1cT_eCz-j9fU'
+from secrets import TRUSTPAY_CHAT_ID as chat_id, TRUSTPAY_BOT_TOKEN as bot_token
 def send_telegram_message(amt, shor_code, utr, bank_name):
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {

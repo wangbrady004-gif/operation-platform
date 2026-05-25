@@ -1,3 +1,4 @@
+integrations/b_auto_bot/secrets.py
 apps/worker/.venv/
 apps/worker/__pycache__/
 *.pyc
