@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { Eye, Loader2, Pencil, Terminal, Trash2 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { toast } from '@/lib/toast';
 import { deleteBank } from './actions';
 import { BankGenerateModal } from './bank-generate-modal';
@@ -32,18 +33,13 @@ export function BankAdminActions({
   const router = useRouter();
   const [busy, start] = useTransition();
   const [showGenerate, setShowGenerate] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  function onDelete() {
-    if (
-      !confirm(
-        `Delete bank profile «${profileKey}»? This cannot be undone. Jobs in history may still mention this bank profile id.`,
-      )
-    ) {
-      return;
-    }
+  function confirmDelete() {
     start(async () => {
       const r = await deleteBank(id);
       if (r.ok) {
+        setShowDeleteConfirm(false);
         toast.success('Bank profile removed', {
           id: `delete-bank-${id}`,
           description: profileKey,
@@ -98,7 +94,7 @@ export function BankAdminActions({
           disabled={busy}
           aria-label={busy ? 'Deleting bank profile' : 'Delete bank profile'}
           title={busy ? 'Deleting…' : 'Delete'}
-          onClick={onDelete}
+          onClick={() => setShowDeleteConfirm(true)}
           className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl border border-red-900/70 bg-red-950/50 px-3 text-sm font-medium text-red-100 transition-colors hover:bg-red-950 disabled:opacity-50 sm:min-w-0 sm:px-4"
         >
           {busy ? (
@@ -117,6 +113,18 @@ export function BankAdminActions({
           onClose={() => setShowGenerate(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        variant="danger"
+        title="Delete bank profile?"
+        description={`Remove «${profileKey}» from the directory. This cannot be undone. Historical tasks may still reference this profile id.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        busy={busy}
+        onClose={() => !busy && setShowDeleteConfirm(false)}
+        onConfirm={confirmDelete}
+      />
     </>
   );
 }
