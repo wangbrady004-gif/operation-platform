@@ -20,12 +20,14 @@ import { UserRole } from '../entities/user.entity';
 import type { JwtPayloadUser } from '../auth/jwt-payload';
 import { BotTasksService } from './bot-tasks.service';
 import { CreateBotTaskDto } from './dto/create-bot-task.dto';
+import { OpsLaunchersService } from '../ops-launchers/ops-launchers.service';
 
 @Controller('bot-tasks')
 export class BotTasksController {
   constructor(
     private readonly service: BotTasksService,
     private readonly config: ConfigService,
+    private readonly opsLaunchers: OpsLaunchersService,
   ) {}
 
   private verifyLauncherKey(req: Request): string {
@@ -66,8 +68,10 @@ export class BotTasksController {
 
   @Public()
   @Post('claim')
-  claimNext(@Req() req: Request) {
+  async claimNext(@Req() req: Request) {
     const launcherId = this.verifyLauncherKey(req);
+    // Heartbeat — fire-and-forget, don't block the claim response
+    void this.opsLaunchers.touchLastSeen(launcherId);
     return this.service.claimNext(launcherId);
   }
 

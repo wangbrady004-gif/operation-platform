@@ -8,7 +8,7 @@ import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { BotTasksModule } from './bot-tasks/bot-tasks.module';
-import { JobsModule } from './jobs/jobs.module';
+import { EventsModule } from './events/events.module';
 import { OpsLaunchersModule } from './ops-launchers/ops-launchers.module';
 import { PaytmMerchantsModule } from './merchants/paytm-merchants.module';
 
@@ -33,8 +33,8 @@ import { PaytmMerchantsModule } from './merchants/paytm-merchants.module';
     }),
     AuditModule,
     AuthModule,
+    EventsModule,
     BotTasksModule,
-    JobsModule,
     OpsLaunchersModule,
     PaytmMerchantsModule,
   ],

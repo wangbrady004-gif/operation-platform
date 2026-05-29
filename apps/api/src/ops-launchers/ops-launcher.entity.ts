@@ -23,6 +23,9 @@ export class OpsLauncherEntity {
   @Column({ name: 'created_by_email' })
   createdByEmail: string;
 
+  @Column({ name: 'last_seen_at', type: 'timestamptz', nullable: true })
+  lastSeenAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

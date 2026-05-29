@@ -9,10 +9,9 @@ export type MerchantFormResult =
   | { ok: true }
   | { ok: false; message: string };
 
-/** Hardcoded for all bot accounts — same as GenerateExe. */
-const HARDCODED_API      = 'https://api.ultrapay.live/v1/bankResponse/create-bot-message-bulk';
 const HARDCODED_COMPANY  = 'c32c90c4-aca9-4dd5-9657-f60a190131ab';
 const HARDCODED_MERCHANT = 'pp1';
+const DEFAULT_API        = 'https://staging-api.ultrapay.live/v1/bankResponse/create-bot-message-bulk';
 
 export async function createMerchant(
   _prev: MerchantFormResult | null,
@@ -27,6 +26,7 @@ export async function createMerchant(
   const password              = String(formData.get('password') ?? '');
   const bankId                = String(formData.get('bankId') ?? '').trim();
   const lastUtrChatId         = String(formData.get('lastUtrChatId') ?? '').trim();
+  const apiUrl                = String(formData.get('api') ?? '').trim() || DEFAULT_API;
   const txnPass               = String(formData.get('txnPass') ?? '');
   const portalListingMid      = String(formData.get('portalListingMid') ?? '').trim();
   const executableRelativePath = String(formData.get('executableRelativePath') ?? '').trim();
@@ -41,7 +41,7 @@ export async function createMerchant(
     mobileNumber: isPaytmLogin ? 'paytm_user' : mobileNumber,
     password: isPaytmLogin ? 'paytm_pass' : password,
     bankId,
-    api: HARDCODED_API,
+    api: apiUrl,
     company: HARDCODED_COMPANY,
     lastUtrChatId,
     merchant: HARDCODED_MERCHANT,
@@ -85,6 +85,7 @@ export async function updateMerchant(
   const password      = String(formData.get('password') ?? '');
   const bankId        = String(formData.get('bankId') ?? '').trim();
   const lastUtrChatId = String(formData.get('lastUtrChatId') ?? '').trim();
+  const apiUrl        = String(formData.get('api') ?? '').trim() || DEFAULT_API;
 
   const isPaytmLogin = loginType === 'paytm_login';
   if (!profileKey || (!isPaytmLogin && !mobileNumber) || !bankId || !lastUtrChatId) {
@@ -95,7 +96,7 @@ export async function updateMerchant(
     profileKey,
     mobileNumber: isPaytmLogin ? 'paytm_user' : mobileNumber,
     bankId,
-    api: HARDCODED_API,
+    api: apiUrl,
     company: HARDCODED_COMPANY,
     lastUtrChatId,
     merchant: HARDCODED_MERCHANT,

@@ -6,13 +6,13 @@ import { SessionsBoard, type ProfileItem } from './sessions-board';
 
 export const dynamic = 'force-dynamic';
 
-async function fetchMe(): Promise<{ role: string } | null> {
+async function fetchMe(): Promise<{ role: string; email: string } | null> {
   const auth = await getBearerHeaders();
   if (!auth) return null;
   const base = getOpsApiBaseUrl();
   const res = await fetch(`${base}/auth/me`, { headers: auth, cache: 'no-store' });
   if (!res.ok) return null;
-  return (await res.json()) as { role: string };
+  return (await res.json()) as { role: string; email: string };
 }
 
 async function fetchProfiles(): Promise<ProfileItem[]> {
@@ -40,7 +40,7 @@ export default async function MerchantRunPage() {
             Start and stop automation sessions. Scripts run on your local machine.
           </p>
         </div>
-        <SessionsBoard profiles={profiles} canRun={canRun} isAdmin={me.role === 'admin'} />
+        <SessionsBoard profiles={profiles} canRun={canRun} isAdmin={me.role === 'admin'} currentEmail={me.email} />
       </div>
     </PageShell>
   );

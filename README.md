@@ -9,6 +9,13 @@ Stack: **Next.js** (UI), **NestJS** (API), **PostgreSQL** (persistent jobs + log
 - Node 20+ recommended, Python 3.9+ for the worker
 - Docker (for Postgres) **or** your own PostgreSQL instance
 
+From the repo root, install orchestration deps plus API and web packages (required for `npm start`):
+
+```bash
+npm install
+npm run install:all
+```
+
 ## 1. Start PostgreSQL
 
 From `ops-platform/`:

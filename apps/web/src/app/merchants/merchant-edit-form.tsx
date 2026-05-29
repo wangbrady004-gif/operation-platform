@@ -89,10 +89,14 @@ export function MerchantEditForm({
   const showCreds = loginType !== 'paytm_login';
   const primaryLabel = credLabel(loginType);
 
+  const STAGING_API = 'https://staging-api.ultrapay.live/v1/bankResponse/create-bot-message-bulk';
+  const PROD_API    = 'https://api.ultrapay.live/v1/bankResponse/create-bot-message-bulk';
+
   const [profileKey, setProfileKey] = useState(detail.profileKey);
   const [mobileNumber, setMobileNumber] = useState(detail.mobileNumber);
   const [bankId, setBankId] = useState(detail.bankId);
   const [lastUtrChatId, setLastUtrChatId] = useState(detail.lastUtrChatId);
+  const [apiUrl, setApiUrl] = useState(detail.api ?? STAGING_API);
   const [password, setPassword] = useState('');
 
   useEffect(() => {
@@ -100,6 +104,7 @@ export function MerchantEditForm({
     setMobileNumber(detail.mobileNumber);
     setBankId(detail.bankId);
     setLastUtrChatId(detail.lastUtrChatId);
+    setApiUrl(detail.api ?? STAGING_API);
     setPassword('');
   }, [detail]);
 
@@ -180,6 +185,28 @@ export function MerchantEditForm({
               onChange={(e) => setLastUtrChatId(e.target.value)}
               className={`font-mono mt-1.5 ${iClass}`}
             />
+          </div>
+
+          {/* API URL (staging vs production) */}
+          <div>
+            <Label>API URL</Label>
+            <div className="mt-1.5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setApiUrl(STAGING_API)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${apiUrl === STAGING_API ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'}`}
+              >
+                Staging
+              </button>
+              <button
+                type="button"
+                onClick={() => setApiUrl(PROD_API)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${apiUrl === PROD_API ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'}`}
+              >
+                Production
+              </button>
+            </div>
+            <input type="hidden" name="api" value={apiUrl} />
           </div>
 
           <SubmitBtn />

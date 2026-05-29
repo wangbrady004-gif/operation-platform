@@ -1,4 +1,0 @@
-requests>=2.28.0
-# macOS system Python often uses LibreSSL 2.8.3; urllib3 v2 prints NotOpenSSLWarning.
-urllib3<2
-python-dotenv>=1.0.0

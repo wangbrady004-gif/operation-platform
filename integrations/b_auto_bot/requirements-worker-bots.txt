@@ -1,8 +1,0 @@
-# PayTM subgraph (tp_127_paytm_* mains + runners). Pip inside worker venv or:
-#   pip install -r integrations/b_auto_bot/requirements-worker-bots.txt
-
-selenium
-requests
-loguru
-pytz
-pyttsx3
