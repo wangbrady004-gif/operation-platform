@@ -1,106 +1,212 @@
-# Ops platform
+# Ops Platform
 
-> **Standalone ops UI / API / worker** — real PayTM/Selenium bots still expect a **`tp_settings_2_0.py` + `tp_127_executabes/`** tree (historically **`b_auto`**). **`B_AUTO_REPO_ROOT`** → that folder when it lives outside this repo; otherwise the worker resolves **`integrations/b_auto_bot`** (see **`integrations/b_auto_bot/README.md`**) after walking ancestors for **`tp_settings_2_0.py`**. Align **`PORT` / `OPS_API_URL` / `INTERNAL_API_TOKEN`** across API, web, and worker.
+A control plane for PayTM merchant operations: operators queue automation **sessions** from the browser, and **launcher programs** on their own machines pull work, run scripts locally, and report back. The stack is intentionally split so secrets stay encrypted in the database, the API stays the single source of truth, and heavy automation never runs inside the web server.
 
-Stack: **Next.js** (UI), **NestJS** (API), **PostgreSQL** (persistent jobs + logs + users + audit), **Python worker** (runs repo scripts), **JWT** (ops login).
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+  subgraph clients["Operator machines"]
+    EXE["Ops launcher (desktop)"]
+    SCRIPTS["Local bot scripts"]
+    EXE --> SCRIPTS
+  end
+
+  subgraph platform["Ops platform"]
+    WEB["Web UI · Next.js"]
+    API["API · NestJS"]
+    PG[("PostgreSQL")]
+    WEB <-->|JWT + server proxy| API
+    API <--> PG
+  end
+
+  subgraph optional["Optional services"]
+    BUILD["Build server · EXE generation"]
+  end
+
+  BROWSER["Browser"] --> WEB
+  EXE -->|launcher key| API
+  WEB -.->|generate launcher / merchant EXE| BUILD
+  API -.-> BUILD
+
+  SSE["Real-time events (SSE)"]
+  API --> SSE
+  SSE --> WEB
+```
+
+### How a session runs
+
+```mermaid
+sequenceDiagram
+  participant Op as Operator (browser)
+  participant API as API
+  participant DB as Database
+  participant L as Launcher (local)
+
+  Op->>API: Create bot task (merchant + profile + module)
+  API->>DB: pending task
+  API-->>Op: SSE task_update
+
+  loop Poll
+    L->>API: Claim next task (launcher key)
+    API->>DB: running + attach launcher id
+    API-->>L: Task + decrypted merchant fields
+    API-->>Op: SSE task_update
+  end
+
+  L->>L: Run automation locally
+
+  alt Stop requested
+    Op->>API: Stop task
+    API->>DB: stop_requested
+    L->>API: Fetch stop requests
+    L->>L: Tear down run
+  end
+
+  L->>API: Mark done
+  API->>DB: done
+  API-->>Op: SSE task_update
+```
+
+---
+
+## Layers
+
+| Layer | Responsibility |
+|--------|----------------|
+| **Web** | Login, dashboard, merchant directory, team admin, live session board with SSE |
+| **API** | Auth, RBAC, encrypted merchant vault, task queue, launcher registry, audit log, event bus |
+| **Database** | Users, merchants, bot tasks, launcher records, audit events |
+| **Launcher** | Long-running desktop agent: claim work, honor stop signals, heartbeat, finish tasks |
+| **Build server** | Optional remote service that compiles launcher and per-merchant executables |
+
+There is **no in-repo Python worker**. Automation executes on the machine where the launcher and bot tree are installed.
+
+---
+
+## Security model
+
+- **Operators** sign in with email and password; the web app holds a short-lived **JWT** in an httpOnly cookie.
+- **Merchant passwords and transaction secrets** are encrypted at rest (AES-GCM); only authorized roles can decrypt, and sensitive reads are **audit-logged**.
+- **Launchers** never use JWT. They authenticate with a shared **launcher key** baked into the generated executable and configured on the API.
+- **Roles** gate every route; inactive users cannot sign in.
+
+| Role | Capabilities |
+|------|----------------|
+| **Viewer** | Read-only visibility where exposed (e.g. merchant list without secrets) |
+| **Operator** | Queue and stop sessions, login assist for manual PayTM steps, view live board |
+| **Admin** | Full merchant CRUD, team management, audit log, launcher maintenance flags |
+
+---
+
+## Real-time UI
+
+The API exposes a **Server-Sent Events** stream for operators and admins. The web app subscribes through its own API route so the browser never holds a raw API token in JavaScript for SSE.
+
+Events include:
+
+- **task_update** — create, claim, stop, complete
+- **launcher_heartbeat** — launcher poll activity (fresh “last seen” in the UI)
+- **ping** — keepalive every 20 seconds
+
+---
 
 ## Prerequisites
 
-- Node 20+ recommended, Python 3.9+ for the worker
-- Docker (for Postgres) **or** your own PostgreSQL instance
+- **Node.js** 20+ recommended
+- **PostgreSQL** 16+ (local install or any managed instance)
+- **Ops launcher + bot tree** on each machine that runs automation (outside this repo)
 
-From the repo root, install orchestration deps plus API and web packages (required for `npm start`):
+---
+
+## Quick start
+
+### 1. Database
+
+Install and start PostgreSQL locally. Create a database and role that match your connection string (example):
+
+`postgresql://ops:YOUR_PASSWORD@127.0.0.1:5432/ops`
+
+### 2. Install dependencies
+
+From the **repository root**:
 
 ```bash
 npm install
 npm run install:all
 ```
 
-## 1. Start PostgreSQL
+This installs the API and web packages. Root dependencies only orchestrate `npm start`.
 
-From `ops-platform/`:
+### 3. Configure environments
 
-```bash
-docker compose up -d
-```
+Copy each app’s **example env** into a local env file and align:
 
-Connection string for local dev:
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | PostgreSQL connection (API) |
+| `JWT_SECRET` | Sign operator tokens (API) |
+| `INIT_ADMIN_EMAIL` / `INIT_ADMIN_PASSWORD` | Bootstrap admin on first boot (API) |
+| `MERCHANT_ENCRYPTION_KEY` | Encrypt merchant secrets, ≥16 chars (API) |
+| `LAUNCHER_KEY` | Shared secret for desktop launchers (API + web) |
+| `OPS_API_URL` | API base URL for server-side web fetches (web) |
+| `BUILD_SERVER_URL` / `BUILD_API_KEY` | Optional EXE build service (web) |
 
-`postgresql://ops:ops@127.0.0.1:5432/ops`
+On first API start with an empty users table and `INIT_ADMIN_PASSWORD` set, an **admin** account is created automatically.
 
-## 2. API (`apps/api`)
+### 4. Run
 
-```bash
-cd ops-platform/apps/api
-cp .env.example .env
-# edit .env: DATABASE_URL, JWT_SECRET, INIT_ADMIN_PASSWORD, INTERNAL_API_TOKEN,
-#            MERCHANT_ENCRYPTION_KEY (≥16 chars — required for paytm merchant admin writes)
-npm install
-npm run start:dev
-```
-
-- **First boot:** if the `users` table is empty and `INIT_ADMIN_PASSWORD` is set, an **admin** user is created (`INIT_ADMIN_EMAIL`, default `admin@localhost`).
-- **Internal worker auth:** `INTERNAL_API_TOKEN` must match the worker `.env`.
-
-**Useful endpoints**
-
-| Endpoint | Who |
-|----------|-----|
-| `POST /auth/login` | Public |
-| `GET /auth/me` | JWT |
-| `POST /auth/users` | Admin — create viewer / operator / admin |
-| `GET /auth/audit` | Admin |
-| `POST /jobs` | Operator or admin — `scriptRelativePath` only for native `tp_127_executabes/*.py`, **or** optional `paytm` body with `tp_127_executabes/run_paytm_bot.py` (wrapper you add to b_auto) |
-| `GET /jobs`, `GET /jobs/:id` | Viewer+ |
-| `GET /jobs/:id/logs/stream` (SSE) | Viewer+ |
-| `GET /paytm-merchants` | Viewer+ — id, profile, mobile, runner path (no secrets) |
-| `GET /paytm-merchants/operators/:id/login-assist` | Operator or admin — mobile + password for manual login (audit) |
-| `GET/POST /paytm-merchants/admin` | Admin — list / create PayTM merchant rows (encrypted secrets) |
-| `GET /paytm-merchants/admin/:id` | Admin — decrypted fields for login copy + audit `view_secrets` |
-| `GET /internal/jobs/*` | `X-Internal-Token: <INTERNAL_API_TOKEN>` |
-| `GET /internal/paytm-merchants/:id/snapshot` | Worker — decrypted JSON for the PayTM **wrapper** `--config-file` |
-
-## 3. Web (`apps/web`)
+From the repository root:
 
 ```bash
-cd ops-platform/apps/web
-cp .env.example .env.local
-npm install
-npm run dev
-# http://127.0.0.1:3001
+npm start
 ```
 
-Open **`/access`** (workspace gate) with the bootstrap admin credentials, then **`/merchant-run`** for merchant sessions. Administrators use **`/merchants`** for profiles and **`/team`** to onboard operators and viewers (API: **`POST /auth/users`** — admin only). Operators use credential assist from **`GET …/operators/:id/login-assist`** on the merchants API route (audit-logged).
+- **API** — default port `8899` (health check at `/health`)
+- **Web** — default port `3001`
 
-Copy **`templates/b_auto_tp_127_executabes/run_paytm_bot.py`** into **`b_auto/tp_127_executabes/run_paytm_bot.py`** — the worker passes `--thin-script`, merges DB merchant JSON when `merchantId` is set, and sets `INTERNAL_API_TOKEN` for deferred anchor polling in that wrapper.
+Open the web app, sign in at **Access**, then use **Dashboard** and **Run Session**.
 
-The UI stores the JWT in an **httpOnly cookie** (`ops_access_token`) via `POST /api/auth/login`.
+---
 
-## 4. Worker (`apps/worker`)
+## Operator workflow
 
-```bash
-cd ops-platform/apps/worker
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp worker/.env.example worker/.env
-# Edit worker/.env: OPS_API_URL (must match API PORT), INTERNAL_API_TOKEN, and
-# B_AUTO_REPO_ROOT if you want a bot root outside the monorepo (default: integrations/b_auto_bot inside this repo).
-export INTERNAL_API_TOKEN=same-as-api
-python -m worker
+1. **Admin** adds PayTM merchant profiles (encrypted credentials, runner metadata).
+2. **Operator** opens **Run Session**, picks merchant / profile / module, starts a session → API enqueues a **pending** task.
+3. **Launcher** on the same LAN/machine polls **claim**; receives decrypted fields needed for the script.
+4. Operator watches the board update over SSE; can **stop** running or queued work.
+5. Launcher polls **stop requests**, shuts down, then **marks done**.
+
+Login assist (mobile + password for manual portal login) is available to operators and admins and is always audited.
+
+---
+
+## Launcher registry
+
+Admins and operators can record which launcher IDs exist, when they were generated, and whether a rebuild is required. Launchers send heartbeats during claim polls so the UI can show staleness.
+
+Launcher generation (optional) calls an external **build server** that embeds `LAUNCHER_KEY` and API URL into a Windows executable, then registers the ID with the API.
+
+---
+
+## Production
+
+- Set `NODE_ENV=production` on the API and **disable** TypeORM `synchronize`; apply the **numbered SQL migrations** in the production migrations folder in order (users → merchants → audit → bot tasks → ops launchers).
+- Rotate `JWT_SECRET`, `LAUNCHER_KEY`, `MERCHANT_ENCRYPTION_KEY`, database credentials, and bootstrap admin password.
+- Terminate TLS at your reverse proxy; keep launcher keys out of logs and screenshots.
+- Do not run merchant automation with production bank credentials from unmanaged devices without policy review.
+
+---
+
+## Monorepo layout (conceptual)
+
+```
+ops-platform/
+├── api/          NestJS — auth, tasks, merchants, launchers, events, audit
+├── web/          Next.js — operator UI + BFF-style API routes
+└── migrations/   PostgreSQL DDL for production rollouts
 ```
 
-For jobs whose payload is **`paytm`** (wrapper flow only — script must be `tp_127_executabes/run_paytm_bot.py`), the worker appends CLI args and, if `merchantId` is present, calls `GET /internal/paytm-merchants/:id/snapshot`, writes a temporary JSON file under the bot root (**`integrations/b_auto_bot`** or **`B_AUTO_REPO_ROOT`**), and passes `--config-file` (removed after the job). Native thin jobs have **no payload** — the worker runs `python` on that path with only `cwd`/`PYTHONPATH` set. Set `MERCHANT_ENCRYPTION_KEY` in the API `.env` before using merchant CRUD.
-
-## Roles
-
-| Role | Can |
-|------|-----|
-| `viewer` | List jobs, view details, watch live SSE logs |
-| `operator` | Enqueue jobs, cancel **queued** jobs |
-| `admin` | Above + create users, PayTM merchant records, read audit log |
-
-## Production notes
-
-- Set `NODE_ENV=production` and **turn off** TypeORM `synchronize` (use migrations). Apply [`db-production-migrations/001-job-payload-paytm-merchants.sql`](./db-production-migrations/001-job-payload-paytm-merchants.sql) (jobs `payload` column + `paytm_merchants` table); [`002-job-paytm-anchor-input.sql`](./db-production-migrations/002-job-paytm-anchor-input.sql) if not already applied; [`003-paytm-merchant-runner-path.sql`](./db-production-migrations/003-paytm-merchant-runner-path.sql) (`paytm_merchants.executable_relative_path`); and [`004-paytm-merchant-portal-listing-mid.sql`](./db-production-migrations/004-paytm-merchant-portal-listing-mid.sql) (`paytm_merchants.portal_listing_mid`). For **user suspend/resume**, apply [`007-users-status-column.sql`](./db-production-migrations/007-users-status-column.sql) (`users.status`).
-- Rotate `JWT_SECRET`, `INTERNAL_API_TOKEN`, `MERCHANT_ENCRYPTION_KEY`, DB password, and admin password.
-- Do not run merchant automation against production bank credentials from unsecured laptops without policy review.
+External: **launcher executable**, **bot script tree**, and optionally a **build server** for packaging EXEs.

@@ -3,9 +3,9 @@ import { getBearerHeaders } from '@/lib/auth-cookies';
 import { getOpsApiBaseUrl } from '@/lib/ops-api';
 
 const BUILD_SERVER_URL =
-  (process.env.NEXT_PUBLIC_BUILD_SERVER_URL as string | undefined) ?? 'http://localhost:7127';
+  (process.env.BUILD_SERVER_URL as string | undefined) ?? 'http://localhost:7127';
 const BUILD_API_KEY =
-  (process.env.NEXT_PUBLIC_BUILD_API_KEY as string | undefined) ?? '';
+  (process.env.BUILD_API_KEY as string | undefined) ?? '';
 
 const HARDCODED_API      = 'https://api.ultrapay.live/v1/bankResponse/create-bot-message-bulk';
 const HARDCODED_COMPANY  = 'c32c90c4-aca9-4dd5-9657-f60a190131ab';

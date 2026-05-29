@@ -3,9 +3,9 @@ import { getBearerHeaders } from '@/lib/auth-cookies';
 import { getOpsApiBaseUrl } from '@/lib/ops-api';
 
 const BUILD_SERVER_URL =
-  (process.env.NEXT_PUBLIC_BUILD_SERVER_URL as string | undefined) ?? 'http://localhost:7127';
+  (process.env.BUILD_SERVER_URL as string | undefined) ?? 'http://localhost:7127';
 const BUILD_API_KEY =
-  (process.env.NEXT_PUBLIC_BUILD_API_KEY as string | undefined) ?? '';
+  (process.env.BUILD_API_KEY as string | undefined) ?? '';
 const OPS_API_URL =
   (process.env.OPS_API_URL as string | undefined) ?? 'http://127.0.0.1:8899';
 const LAUNCHER_KEY =
