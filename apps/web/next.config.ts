@@ -13,26 +13,6 @@ const nextConfig: NextConfig = {
         destination: "/",
         permanent: false,
       },
-      {
-        source: "/run-paytm",
-        destination: "/merchant-run",
-        permanent: false,
-      },
-      {
-        source: "/run-paytm/:path*",
-        destination: "/merchant-run/:path*",
-        permanent: false,
-      },
-      {
-        source: "/paytm-merchants",
-        destination: "/merchants",
-        permanent: false,
-      },
-      {
-        source: "/paytm-merchants/:path*",
-        destination: "/merchants/:path*",
-        permanent: false,
-      },
     ];
   },
 };

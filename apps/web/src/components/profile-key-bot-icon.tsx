@@ -12,7 +12,7 @@ type Props = {
 };
 
 /**
- * Favicon for a Paytm profile — same logic as the merchant registry (prefix → bank domain).
+ * Favicon for a bank profile — same logic as the bank registry (prefix → bank domain).
  */
 export function ProfileKeyBotIcon({
   profileKey,

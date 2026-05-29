@@ -17,7 +17,7 @@ type BotTask = {
   createdAt: string;
 };
 
-type MerchantRow = {
+type BankRow = {
   id: string;
   profileKey: string;
   mobileNumber: string;
@@ -95,11 +95,11 @@ export default async function Home() {
     if (r.ok) activeTasks = (await r.json()) as BotTask[];
   }
 
-  let merchants: MerchantRow[] = [];
+  let banks: BankRow[] = [];
   if (auth) {
-    const endpoint = isAdmin ? `${apiBase}/paytm-merchants/admin` : `${apiBase}/paytm-merchants`;
+    const endpoint = isAdmin ? `${apiBase}/banks/admin` : `${apiBase}/banks`;
     const r = await fetch(endpoint, { headers: auth, cache: 'no-store' });
-    if (r.ok) merchants = (await r.json()) as MerchantRow[];
+    if (r.ok) banks = (await r.json()) as BankRow[];
   }
 
   const runningCount = activeTasks.filter((t) => t.status === 'running').length;
@@ -147,7 +147,7 @@ export default async function Home() {
           />
           <StatCard
             label="Profiles"
-            value={merchants.length}
+            value={banks.length}
             sub="Registered"
             accent="sky"
             icon={<Store className="h-5 w-5" />}
@@ -165,7 +165,7 @@ export default async function Home() {
               {activeTasks.length} session{activeTasks.length > 1 ? 's' : ''} active
             </p>
             <Link
-              href="/merchant-run"
+              href="/bank-run"
               className="ml-auto flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
             >
               <Play className="h-3 w-3" />
@@ -183,7 +183,7 @@ export default async function Home() {
                 <p className="mt-0.5 text-xs text-zinc-500">Currently running or queued bot tasks.</p>
               </div>
               <Link
-                href="/merchant-run"
+                href="/bank-run"
                 className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-700 shrink-0"
               >
                 <Play className="h-3 w-3" />
@@ -211,7 +211,7 @@ export default async function Home() {
               ) : (
                 <p className="py-8 text-center text-sm text-zinc-500">
                   No active sessions.{' '}
-                  <Link href="/merchant-run" className="text-emerald-400 hover:underline underline-offset-4">
+                  <Link href="/bank-run" className="text-emerald-400 hover:underline underline-offset-4">
                     Start one from Run Session.
                   </Link>
                 </p>
@@ -224,20 +224,20 @@ export default async function Home() {
             <div className="border-b border-zinc-800 px-5 py-4 flex items-center justify-between gap-3">
               <h2 className="text-sm font-medium text-zinc-200">Profiles</h2>
               {isAdmin && (
-                <Link href="/merchants" className="text-xs text-zinc-500 hover:text-zinc-300 shrink-0">
+                <Link href="/banks" className="text-xs text-zinc-500 hover:text-zinc-300 shrink-0">
                   Manage →
                 </Link>
               )}
             </div>
-            {merchants.length === 0 ? (
+            {banks.length === 0 ? (
               <p className="px-5 py-8 text-center text-sm text-zinc-500">
                 {isAdmin
-                  ? <><span>No profiles. </span><Link href="/merchants" className="text-emerald-400 hover:underline">Add one.</Link></>
+                  ? <><span>No profiles. </span><Link href="/banks" className="text-emerald-400 hover:underline">Add one.</Link></>
                   : 'No profiles available.'}
               </p>
             ) : (
               <ul className="divide-y divide-zinc-800">
-                {merchants.slice(0, 12).map((m) => (
+                {banks.slice(0, 12).map((m) => (
                   <li key={m.id} className="px-5 py-3 flex items-center gap-3">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-800">
                       <ProfileKeyBotIcon profileKey={m.profileKey} className="h-4 w-4 text-zinc-400" />
@@ -248,10 +248,10 @@ export default async function Home() {
                     </div>
                   </li>
                 ))}
-                {merchants.length > 12 && (
+                {banks.length > 12 && (
                   <li className="px-5 py-3">
-                    <Link href="/merchants" className="text-xs text-zinc-500 hover:text-zinc-300">
-                      +{merchants.length - 12} more →
+                    <Link href="/banks" className="text-xs text-zinc-500 hover:text-zinc-300">
+                      +{banks.length - 12} more →
                     </Link>
                   </li>
                 )}

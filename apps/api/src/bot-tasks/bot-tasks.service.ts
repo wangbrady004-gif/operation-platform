@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { BotTaskEntity } from './bot-task.entity';
 import { CreateBotTaskDto } from './dto/create-bot-task.dto';
-import { PaytmMerchantsService } from '../merchants/paytm-merchants.service';
+import { BanksService } from '../banks/banks.service';
 import { OpsLaunchersService } from '../ops-launchers/ops-launchers.service';
 import { EventsService } from '../events/events.service';
 
@@ -13,7 +13,7 @@ export class BotTasksService {
   constructor(
     @InjectRepository(BotTaskEntity)
     private readonly repo: Repository<BotTaskEntity>,
-    private readonly merchants: PaytmMerchantsService,
+    private readonly banks: BanksService,
     private readonly config: ConfigService,
     private readonly opsLaunchers: OpsLaunchersService,
     private readonly events: EventsService,
@@ -34,7 +34,7 @@ export class BotTasksService {
 
   async create(dto: CreateBotTaskDto, email: string): Promise<BotTaskEntity> {
     const task = this.repo.create({
-      merchantId:    dto.merchantId,
+      bankProfileId:    dto.bankProfileId,
       profileKey:    dto.profileKey,
       module:        dto.module,
       settingsKey:   dto.settingsKey,
@@ -87,7 +87,7 @@ export class BotTasksService {
     this.emitTask(saved);
 
     // Fetch decrypted merchant credentials
-    const merchantDetail = await this.merchants.getAdminDetail(task.merchantId);
+    const bankDetail = await this.banks.getAdminDetail(task.bankProfileId);
 
     return {
       id:          saved.id,
@@ -96,13 +96,13 @@ export class BotTasksService {
       settingsKey: saved.settingsKey,
       loginType:   saved.loginType,
       values: {
-        bank_id:          merchantDetail.bankId,
-        api:              merchantDetail.api,
-        company:          merchantDetail.company,
-        merchant:         merchantDetail.merchant,
-        last_utr_chat_id: merchantDetail.lastUtrChatId,
-        gmail_id:         merchantDetail.mobileNumber,
-        password:         merchantDetail.password,
+        bank_id:          bankDetail.bankId,
+        api:              bankDetail.api,
+        company:          bankDetail.company,
+        merchant:         bankDetail.merchant,
+        last_utr_chat_id: bankDetail.lastUtrChatId,
+        gmail_id:         bankDetail.mobileNumber,
+        password:         bankDetail.password,
       },
     };
   }

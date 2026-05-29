@@ -246,7 +246,7 @@ export function TeamDataPanel({ viewerEmail }: { viewerEmail: string }) {
                     {
                       role: 'Operator',
                       color: 'text-emerald-400',
-                      desc: 'Run merchant sessions, view jobs and live logs. Cannot manage merchants or team.',
+                      desc: 'Run bank sessions, view jobs and live logs. Cannot manage bank profiles or team.',
                     },
                     {
                       role: 'Viewer',
@@ -256,7 +256,7 @@ export function TeamDataPanel({ viewerEmail }: { viewerEmail: string }) {
                     {
                       role: 'Admin',
                       color: 'text-violet-300',
-                      desc: 'Full access — merchant directory, team provisioning, and worker recovery.',
+                      desc: 'Full access — bank directory, team provisioning, and worker recovery.',
                     },
                   ].map((r) => (
                     <div key={r.role} className="flex gap-3">

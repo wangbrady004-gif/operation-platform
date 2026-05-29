@@ -14,7 +14,7 @@ export class BotTaskEntity {
   id: string;
 
   @Column({ name: 'merchant_id' })
-  merchantId: string;
+  bankProfileId: string;
 
   @Column({ name: 'profile_key' })
   profileKey: string;

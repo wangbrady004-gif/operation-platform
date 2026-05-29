@@ -14,6 +14,6 @@ export class AppController {
 
   @Get('health')
   health() {
-    return { status: 'ok', service: 'b_auto-ops-api' };
+    return { status: 'ok', service: 'operation-platform-api' };
   }
 }

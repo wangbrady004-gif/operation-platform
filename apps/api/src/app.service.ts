@@ -11,7 +11,7 @@ export class AppService {
         audit: 'GET /auth/audit (admin)',
       },
       routes: {
-        merchants: 'GET|POST /paytm-merchants',
+        banks: 'GET|POST /banks',
         botTasks: 'GET|POST /bot-tasks — operator/admin',
         launcher: 'POST /bot-tasks/claim — launcher EXE (x-launcher-key)',
         events: 'GET /events — SSE stream (operator/admin)',

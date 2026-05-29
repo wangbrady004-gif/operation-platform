@@ -35,9 +35,9 @@ export function SessionForm() {
       toast.success('Welcome back', { id: 'login-success', duration: 2000 });
       const next =
         typeof window !== 'undefined'
-          ? new URLSearchParams(window.location.search).get('next') || '/merchant-run'
-          : '/merchant-run';
-      router.replace(next.startsWith('/') ? next : '/merchant-run');
+          ? new URLSearchParams(window.location.search).get('next') || '/bank-run'
+          : '/bank-run';
+      router.replace(next.startsWith('/') ? next : '/bank-run');
       router.refresh();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Something went wrong';

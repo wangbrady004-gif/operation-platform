@@ -8,7 +8,7 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 
 export const metadata: Metadata = {
   title: { default: 'Ops Console', template: '%s · Ops Console' },
-  description: 'Internal operations console for merchant automation.',
+  description: 'Internal operations console for bank automation.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

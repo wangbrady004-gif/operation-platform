@@ -1,11 +1,9 @@
 /**
- * Maps Paytm profile_key prefixes / patterns to a domain for favicon resolution.
+ * Maps profile_key prefixes / patterns to a domain for favicon resolution.
  * There is no separate bank_type column — bank family is inferred from profile_key (as in registry).
  */
 const DOMAIN_BY_PREFIX: [string, string][] = [
   ['GOOGLE', 'pay.google.com'],
-  ['TP_PAYTM', 'paytm.com'],
-  ['PAYTM', 'paytm.com'],
   ['TP_PHONEPE', 'phonepe.com'],
   ['PHONEPE', 'phonepe.com'],
   ['TP_IOB', 'iob.in'],

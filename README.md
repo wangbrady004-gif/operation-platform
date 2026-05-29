@@ -1,6 +1,6 @@
 # Ops Platform
 
-A control plane for PayTM merchant operations: operators queue automation **sessions** from the browser, and **launcher programs** on their own machines pull work, run scripts locally, and report back. The stack is intentionally split so secrets stay encrypted in the database, the API stays the single source of truth, and heavy automation never runs inside the web server.
+A control plane for **bank profile automation**: operators queue sessions in the browser, **launcher agents** on their own machines claim work and run scripts locally, and everyone sees live status without polling the database. Secrets stay encrypted in PostgreSQL; the API is the only place that decrypts them for authorized callers.
 
 ---
 
@@ -8,128 +8,144 @@ A control plane for PayTM merchant operations: operators queue automation **sess
 
 ```mermaid
 flowchart TB
-  subgraph clients["Operator machines"]
-    EXE["Ops launcher (desktop)"]
-    SCRIPTS["Local bot scripts"]
-    EXE --> SCRIPTS
+  subgraph edge["Operator environment"]
+    BROWSER["Browser"]
+    LAUNCHER["Ops launcher · desktop"]
+    BOTS["Local bot tree · scripts / EXEs"]
+    LAUNCHER --> BOTS
   end
 
-  subgraph platform["Ops platform"]
-    WEB["Web UI · Next.js"]
-    API["API · NestJS"]
-    PG[("PostgreSQL")]
-    WEB <-->|JWT + server proxy| API
-    API <--> PG
+  subgraph console["Ops console · monorepo"]
+    WEB["Web · Next.js :3001"]
+    API["API · NestJS :8899"]
+    DB[("PostgreSQL")]
+    WEB <-->|JWT in httpOnly cookie| API
+    API <--> DB
   end
 
-  subgraph optional["Optional services"]
-    BUILD["Build server · EXE generation"]
+  subgraph remote["Optional"]
+    BUILD["Build server · EXE packaging"]
   end
 
-  BROWSER["Browser"] --> WEB
-  EXE -->|launcher key| API
-  WEB -.->|generate launcher / merchant EXE| BUILD
-  API -.-> BUILD
+  BROWSER --> WEB
+  LAUNCHER -->|launcher key + launcher id| API
+  WEB -.->|bank / launcher EXE builds| BUILD
 
-  SSE["Real-time events (SSE)"]
-  API --> SSE
-  SSE --> WEB
+  API -->|SSE| WEB
+  WEB -->|EventSource via BFF| BROWSER
 ```
 
-### How a session runs
+### Session lifecycle
 
 ```mermaid
 sequenceDiagram
-  participant Op as Operator (browser)
+  participant UI as Web UI
   participant API as API
   participant DB as Database
-  participant L as Launcher (local)
+  participant L as Launcher
 
-  Op->>API: Create bot task (merchant + profile + module)
-  API->>DB: pending task
-  API-->>Op: SSE task_update
+  UI->>API: Create bot task (profile, module, settings)
+  API->>DB: status = pending
+  API-->>UI: SSE task_update
 
-  loop Poll
-    L->>API: Claim next task (launcher key)
-    API->>DB: running + attach launcher id
-    API-->>L: Task + decrypted merchant fields
-    API-->>Op: SSE task_update
+  L->>API: POST claim (launcher key)
+  API->>DB: status = running, claimed_by = launcher id
+  API-->>L: Task + decrypted profile fields
+  API-->>UI: SSE task_update + launcher heartbeat
+
+  Note over L: Runs tp_127_* automation locally
+
+  opt Operator stops
+    UI->>API: Delete / stop task
+    API->>DB: stop_requested or done
+    L->>API: GET stop-requests
+    L->>L: Shutdown run
   end
 
-  L->>L: Run automation locally
-
-  alt Stop requested
-    Op->>API: Stop task
-    API->>DB: stop_requested
-    L->>API: Fetch stop requests
-    L->>L: Tear down run
-  end
-
-  L->>API: Mark done
-  API->>DB: done
-  API-->>Op: SSE task_update
+  L->>API: PATCH done
+  API->>DB: status = done
+  API-->>UI: SSE task_update
 ```
 
 ---
 
-## Layers
+## What each layer does
 
-| Layer | Responsibility |
-|--------|----------------|
-| **Web** | Login, dashboard, merchant directory, team admin, live session board with SSE |
-| **API** | Auth, RBAC, encrypted merchant vault, task queue, launcher registry, audit log, event bus |
-| **Database** | Users, merchants, bot tasks, launcher records, audit events |
-| **Launcher** | Long-running desktop agent: claim work, honor stop signals, heartbeat, finish tasks |
-| **Build server** | Optional remote service that compiles launcher and per-merchant executables |
+| Layer | Role |
+|--------|------|
+| **Web** | Ops Console UI: sign-in, dashboard, live **Run Session** board, **Directory** (bank profiles), **Team** (users). Server routes proxy the API so tokens stay in httpOnly cookies. |
+| **API** | Global JWT guard, role checks, bank profile vault (AES-GCM), bot task queue, launcher registry, audit log, in-memory **SSE** event bus. |
+| **Database** | Users, bank profiles, bot tasks, ops launcher rows, audit events. |
+| **Launcher** | Polls claim → runs work → polls stop requests → marks done. Authenticates with a shared **launcher key**, not operator JWT. |
+| **Build server** | Optional. Packages per-profile bank bots and the ops launcher EXE; web checks health before offering downloads. |
 
-There is **no in-repo Python worker**. Automation executes on the machine where the launcher and bot tree are installed.
+There is **no in-repo worker process**. All heavy automation runs on the operator machine next to the launcher.
 
 ---
 
-## Security model
+## Web experience
 
-- **Operators** sign in with email and password; the web app holds a short-lived **JWT** in an httpOnly cookie.
-- **Merchant passwords and transaction secrets** are encrypted at rest (AES-GCM); only authorized roles can decrypt, and sensitive reads are **audit-logged**.
-- **Launchers** never use JWT. They authenticate with a shared **launcher key** baked into the generated executable and configured on the API.
-- **Roles** gate every route; inactive users cannot sign in.
+| Area | Who | Purpose |
+|------|-----|---------|
+| **Access** | Everyone | Email/password sign-in; JWT stored in a 12-hour httpOnly session cookie. |
+| **Dashboard** | Anyone (richer when signed in) | API health, running/queued session counts, profile totals, quick links. |
+| **Run Session** | Operator, admin | Start/stop sessions, SSE live board, launcher online indicators, optional EXE download when build server is up. |
+| **Directory** | Admin | Create/edit bank profiles, view secrets (audited), portal MID, thin-runner path, trigger profile EXE builds. |
+| **Team** | Admin | Onboard users (viewer / operator / admin), suspend or reactivate accounts. |
 
-| Role | Capabilities |
+Protected routes redirect unauthenticated users to **Access** with a return URL. The dashboard itself stays reachable so you can confirm the API is up before logging in.
+
+Profile keys drive automation defaults: **Paytm-style** keys map to `tp_127_paytm_main` / `PAYTM` settings; **Google** keys map to `tp_127_google_main` / `GMAIL` login. Unsupported keys cannot start a session until configured.
+
+---
+
+## API surface (conceptual)
+
+| Area | Auth | Notes |
+|------|------|-------|
+| **Health** | Public | Liveness for dashboard and orchestration. |
+| **Auth** | Public login; JWT elsewhere | Bootstrap admin on first boot when users table is empty. |
+| **Banks** | JWT + role | Safe list for operators; admin CRUD; **login assist** (mobile + password, audited). |
+| **Bot tasks** | JWT for create/list/stop; launcher key for claim/stop-requests/done | FIFO claim; returns decrypted profile payload to launcher only. |
+| **Ops launchers** | JWT to list/record; launcher key on claim heartbeat | Tracks `needs_update`, `last_seen_at`, optional bot root path. |
+| **Events** | JWT (operator/admin) | SSE: `task_update`, `launcher_heartbeat`, `ping` every 20s. |
+| **Audit** | Admin | Recent security-sensitive actions. |
+
+---
+
+## Security
+
+- **Operators** never send passwords to the browser for storage—only the API decrypts at claim time for the launcher.
+- **Launchers** use `LAUNCHER_KEY` (+ `LAUNCHER_ID` header) on public task routes; mis-keyed requests are rejected.
+- **Inactive users** cannot sign in or call protected APIs.
+- Sensitive reads (`view_secrets`, `operator_login_assist`, user changes) write **audit events**.
+
+| Role | Typical access |
 |------|----------------|
-| **Viewer** | Read-only visibility where exposed (e.g. merchant list without secrets) |
-| **Operator** | Queue and stop sessions, login assist for manual PayTM steps, view live board |
-| **Admin** | Full merchant CRUD, team management, audit log, launcher maintenance flags |
-
----
-
-## Real-time UI
-
-The API exposes a **Server-Sent Events** stream for operators and admins. The web app subscribes through its own API route so the browser never holds a raw API token in JavaScript for SSE.
-
-Events include:
-
-- **task_update** — create, claim, stop, complete
-- **launcher_heartbeat** — launcher poll activity (fresh “last seen” in the UI)
-- **ping** — keepalive every 20 seconds
+| **Viewer** | Safe bank list (no secrets), read-only where exposed |
+| **Operator** | Run Session, login assist, active task list |
+| **Admin** | Directory, Team, audit log, launcher maintenance |
 
 ---
 
 ## Prerequisites
 
-- **Node.js** 20+ recommended
-- **PostgreSQL** 16+ (local install or any managed instance)
-- **Ops launcher + bot tree** on each machine that runs automation (outside this repo)
+- **Node.js** 20+
+- **PostgreSQL** 16+ (local or managed)
+- **Ops launcher + bot tree** on each machine that executes automation
+- **Build server** (optional) for Windows EXE generation
 
 ---
 
 ## Quick start
 
-### 1. Database
+### 1. PostgreSQL
 
-Install and start PostgreSQL locally. Create a database and role that match your connection string (example):
+Install and start Postgres. Create a database user and database matching your connection string, for example:
 
 `postgresql://ops:YOUR_PASSWORD@127.0.0.1:5432/ops`
 
-### 2. Install dependencies
+### 2. Dependencies
 
 From the **repository root**:
 
@@ -138,75 +154,68 @@ npm install
 npm run install:all
 ```
 
-This installs the API and web packages. Root dependencies only orchestrate `npm start`.
+### 3. Environment
 
-### 3. Configure environments
+Copy each package’s **example env** into a local env file.
 
-Copy each app’s **example env** into a local env file and align:
+| Variable | Where | Purpose |
+|----------|--------|---------|
+| `DATABASE_URL` | API | Postgres connection |
+| `JWT_SECRET` | API | Operator JWT signing |
+| `INIT_ADMIN_EMAIL` / `INIT_ADMIN_PASSWORD` | API | First-boot admin (password ≥ 8 chars) |
+| `MERCHANT_ENCRYPTION_KEY` | API | AES key for profile secrets (≥ 16 chars) |
+| `LAUNCHER_KEY` | API + Web | Launcher EXE ↔ API shared secret |
+| `OPS_API_URL` | Web | API base for server-side fetches |
+| `BUILD_SERVER_URL` / `BUILD_API_KEY` | Web | Optional EXE build service |
 
-| Variable | Purpose |
-|----------|---------|
-| `DATABASE_URL` | PostgreSQL connection (API) |
-| `JWT_SECRET` | Sign operator tokens (API) |
-| `INIT_ADMIN_EMAIL` / `INIT_ADMIN_PASSWORD` | Bootstrap admin on first boot (API) |
-| `MERCHANT_ENCRYPTION_KEY` | Encrypt merchant secrets, ≥16 chars (API) |
-| `LAUNCHER_KEY` | Shared secret for desktop launchers (API + web) |
-| `OPS_API_URL` | API base URL for server-side web fetches (web) |
-| `BUILD_SERVER_URL` / `BUILD_API_KEY` | Optional EXE build service (web) |
-
-On first API start with an empty users table and `INIT_ADMIN_PASSWORD` set, an **admin** account is created automatically.
+Align `LAUNCHER_KEY` and `OPS_API_URL` across API and web. Match `INTERNAL` build credentials if your build server requires them.
 
 ### 4. Run
-
-From the repository root:
 
 ```bash
 npm start
 ```
 
-- **API** — default port `8899` (health check at `/health`)
-- **Web** — default port `3001`
+| Service | Default port |
+|---------|----------------|
+| API | `8899` (`/health`) |
+| Web | `3001` |
 
-Open the web app, sign in at **Access**, then use **Dashboard** and **Run Session**.
+Sign in at **Access**, then use **Dashboard** and **Run Session**. Admins manage profiles under **Directory** and people under **Team**.
 
 ---
 
 ## Operator workflow
 
-1. **Admin** adds PayTM merchant profiles (encrypted credentials, runner metadata).
-2. **Operator** opens **Run Session**, picks merchant / profile / module, starts a session → API enqueues a **pending** task.
-3. **Launcher** on the same LAN/machine polls **claim**; receives decrypted fields needed for the script.
-4. Operator watches the board update over SSE; can **stop** running or queued work.
-5. Launcher polls **stop requests**, shuts down, then **marks done**.
+1. **Admin** registers bank profiles (mobile, encrypted password/txn pass, API endpoint, optional portal MID and thin-runner path).
+2. **Operator** opens **Run Session**, selects a profile, starts a session → task enters **pending**.
+3. **Launcher** claims the oldest pending task → **running**, receives decrypted `values` for the script.
+4. UI updates over **SSE**; operator can **stop** (queued tasks finish immediately; running tasks get **stop_requested**).
+5. Launcher reads stop requests, tears down, calls **done**.
 
-Login assist (mobile + password for manual portal login) is available to operators and admins and is always audited.
+**Login assist** copies portal credentials for manual steps; every use is audited.
 
----
-
-## Launcher registry
-
-Admins and operators can record which launcher IDs exist, when they were generated, and whether a rebuild is required. Launchers send heartbeats during claim polls so the UI can show staleness.
-
-Launcher generation (optional) calls an external **build server** that embeds `LAUNCHER_KEY` and API URL into a Windows executable, then registers the ID with the API.
+Optional: generate a **profile EXE** or **ops launcher EXE** when the build server is online (UI shows reachability).
 
 ---
 
 ## Production
 
-- Set `NODE_ENV=production` on the API and **disable** TypeORM `synchronize`; apply the **numbered SQL migrations** in the production migrations folder in order (users → merchants → audit → bot tasks → ops launchers).
-- Rotate `JWT_SECRET`, `LAUNCHER_KEY`, `MERCHANT_ENCRYPTION_KEY`, database credentials, and bootstrap admin password.
-- Terminate TLS at your reverse proxy; keep launcher keys out of logs and screenshots.
-- Do not run merchant automation with production bank credentials from unmanaged devices without policy review.
+- Set `NODE_ENV=production` on the API and **turn off** TypeORM `synchronize`.
+- Apply **numbered SQL migrations** in order: users → bank profiles → audit → bot tasks → ops launchers.
+- Rotate `JWT_SECRET`, `LAUNCHER_KEY`, encryption key, DB password, and bootstrap admin password.
+- Terminate TLS at a reverse proxy; never commit real env files.
+- Review policy before running production bank credentials on operator laptops.
 
 ---
 
-## Monorepo layout (conceptual)
+## Repository shape
 
 ```
-ops-platform/
-├── api/          NestJS — auth, tasks, merchants, launchers, events, audit
-├── web/          Next.js — operator UI + BFF-style API routes
-└── migrations/   PostgreSQL DDL for production rollouts
+operation-platform/
+├── API package      NestJS — auth, banks, bot-tasks, launchers, events, audit
+├── Web package      Next.js — console UI + authenticated BFF routes
+└── Migrations       Ordered PostgreSQL DDL for production
 ```
 
-External: **launcher executable**, **bot script tree**, and optionally a **build server** for packaging EXEs.
+**External:** launcher executable, bot script tree, optional build server.

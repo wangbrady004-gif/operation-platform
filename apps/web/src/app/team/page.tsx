@@ -18,7 +18,7 @@ async function fetchMe(): Promise<{ role: string; email: string } | null> {
 export default async function TeamPage() {
   const me = await fetchMe();
   if (!me) redirect('/access');
-  if (me.role !== 'admin') redirect('/merchant-run');
+  if (me.role !== 'admin') redirect('/bank-run');
 
   return (
     <PageShell>

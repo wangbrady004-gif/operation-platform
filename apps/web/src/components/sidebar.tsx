@@ -8,8 +8,6 @@ import {
   Play,
   Store,
   Users,
-  Package,
-  Rocket,
   LogOut,
   Menu,
   X,
@@ -20,11 +18,11 @@ import { toast } from '@/lib/toast';
 
 const MAIN_NAV = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/merchant-run', label: 'Run Session', icon: Play, exact: false },
+  { href: '/bank-run', label: 'Run Session', icon: Play, exact: false },
 ];
 
 const ADMIN_NAV = [
-  { href: '/merchants', label: 'Directory', icon: Store, exact: false },
+  { href: '/banks', label: 'Directory', icon: Store, exact: false },
   { href: '/team', label: 'Team', icon: Users, exact: false },
 ];
 

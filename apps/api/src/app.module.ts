@@ -10,7 +10,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { BotTasksModule } from './bot-tasks/bot-tasks.module';
 import { EventsModule } from './events/events.module';
 import { OpsLaunchersModule } from './ops-launchers/ops-launchers.module';
-import { PaytmMerchantsModule } from './merchants/paytm-merchants.module';
+import { BanksModule } from './banks/banks.module';
 
 @Module({
   imports: [
@@ -36,7 +36,7 @@ import { PaytmMerchantsModule } from './merchants/paytm-merchants.module';
     EventsModule,
     BotTasksModule,
     OpsLaunchersModule,
-    PaytmMerchantsModule,
+    BanksModule,
   ],
   controllers: [AppController],
   providers: [

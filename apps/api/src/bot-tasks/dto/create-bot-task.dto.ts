@@ -3,7 +3,7 @@ import { IsString, MinLength } from 'class-validator';
 export class CreateBotTaskDto {
   @IsString()
   @MinLength(1)
-  merchantId: string;
+  bankProfileId: string;
 
   @IsString()
   @MinLength(1)
