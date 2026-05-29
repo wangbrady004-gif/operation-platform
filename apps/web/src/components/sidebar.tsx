@@ -83,7 +83,7 @@ function NavSection({
 
 function SidebarContent({ onNav }: { onNav?: () => void }) {
   const pathname = usePathname();
-  const router = useRouter();
+  const router   = useRouter();
 
   async function handleLogout() {
     try {

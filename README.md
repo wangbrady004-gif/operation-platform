@@ -53,7 +53,7 @@ sequenceDiagram
   API-->>L: Task + decrypted profile fields
   API-->>UI: SSE task_update + launcher heartbeat
 
-  Note over L: Runs tp_127_* automation locally
+  Note over L: Runs up_* automation locally
 
   opt Operator stops
     UI->>API: Delete / stop task

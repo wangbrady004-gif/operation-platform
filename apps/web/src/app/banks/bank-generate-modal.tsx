@@ -229,10 +229,13 @@ export function BankGenerateModal({
 
   async function handleGenerate() {
     if (phase === 'building' || !detail || !buildCfg) return;
+
+    const fileName = `${detail.profileKey}.exe`;
     setPhase('building');
     setErrorMsg('');
     setAccessCode('');
     setStageIdx(0);
+
     stageTimer.current = setInterval(() => {
       setStageIdx((i) => Math.min(i + 1, STAGE_LABELS.length - 1));
     }, 18000);
@@ -245,14 +248,14 @@ export function BankGenerateModal({
         throw new Error(body.error ?? `HTTP ${res.status}`);
       }
 
-      const code = res.headers.get('X-Access-Code') ?? '';
-      const fileName = res.headers.get('X-File-Name') ?? `${detail.profileKey}.exe`;
+      const code     = res.headers.get('X-Access-Code') ?? '';
+      const respName = res.headers.get('X-File-Name') ?? fileName;
+      const blob     = await res.blob();
 
-      const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
+      const a   = document.createElement('a');
+      a.href     = url;
+      a.download = respName;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -307,13 +310,8 @@ export function BankGenerateModal({
             </h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {isBuilding ? (
-              <div className="flex max-w-[11rem] items-center gap-1.5 text-xs text-emerald-400 sm:max-w-none">
-                <Loader2 size={11} className="shrink-0 animate-spin" />
-                <span className="font-medium truncate">{STAGE_LABELS[stageIdx]}</span>
-              </div>
-            ) : (
-              buildServerReady && <BuildServerStatusBadge status={buildServer} compact />
+            {!isBuilding && buildServerReady && (
+              <BuildServerStatusBadge status={buildServer} compact />
             )}
             {canClose && (
               <button
@@ -384,13 +382,32 @@ export function BankGenerateModal({
           )}
 
           {isBuilding && (
-            <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-4 py-6 text-center">
-              <p className="text-sm text-emerald-300/90">
-                Building <span className="font-mono text-emerald-200">{outputFileName}</span>
-              </p>
-              <p className="mt-2 text-[11px] text-zinc-500">
-                Usually 30–90 seconds. Do not close this window.
-              </p>
+            <div className="space-y-4">
+              {/* Animated progress bar */}
+              <div className="h-1 w-full overflow-hidden rounded-full bg-zinc-800">
+                <div className="h-full w-1/2 animate-[shimmer_1.6s_ease-in-out_infinite] rounded-full bg-emerald-500/70" />
+              </div>
+
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-950 ring-1 ring-emerald-800/50">
+                    <Loader2 size={14} className="animate-spin text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-zinc-100">
+                      Compiling <span className="font-mono text-emerald-300">{outputFileName}</span>
+                    </p>
+                    <p className="text-[11px] text-zinc-500 mt-0.5">{STAGE_LABELS[stageIdx]}</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-zinc-800 pt-3 flex items-start gap-2">
+                  <div className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Usually 30–90 seconds. Do not close this window.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 

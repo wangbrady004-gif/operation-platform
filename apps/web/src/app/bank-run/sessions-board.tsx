@@ -386,23 +386,17 @@ function LauncherSection({
             </p>
           </div>
           <BuildServerStatusBadge status={buildServer} />
-          <div className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950/50 px-4 py-2.5">
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-zinc-500 uppercase tracking-wide font-semibold">Your launcher ID</p>
-              <p className="font-mono text-sm text-zinc-300 truncate">{emailToLauncherId(currentEmail)}</p>
-            </div>
-            <button
-              type="button"
-              disabled={generating || buildBlocked}
-              onClick={() => void handleGenerate()}
-              className="shrink-0 flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition"
-            >
-              {generating
-                ? <><Loader2 size={14} className="animate-spin" /> Building…</>
-                : <><Download size={14} /> Download EXE</>
-              }
-            </button>
-          </div>
+          <button
+            type="button"
+            disabled={generating || buildBlocked}
+            onClick={() => void handleGenerate()}
+            className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            {generating
+              ? <><Loader2 size={14} className="animate-spin" /> Building…</>
+              : <><Download size={14} /> Download EXE</>
+            }
+          </button>
           <p className="text-[11px] text-zinc-600">
             You can only generate one launcher. To re-issue, ask an admin to{' '}
             <span className="text-zinc-500">Rebuild</span> or delete your record.
@@ -517,10 +511,16 @@ export function SessionsBoard({
       es.onerror = () => {
         // EventSource readyState: 0=connecting, 1=open, 2=closed
         if (es.readyState === EventSource.CLOSED) {
-          // Manually closed — reconnect after 3 s
-          reconnectTimer.current = setTimeout(connect, 3_000);
+          // Stream fully dropped — reconnect after 3 s and re-sync state
+          // to catch any task/launcher events that happened during the gap.
+          reconnectTimer.current = setTimeout(() => {
+            void fetchTasks();
+            void fetchLaunchers();
+            connect();
+          }, 3_000);
         }
-        // CONNECTING state means the browser is already retrying natively
+        // CONNECTING state means the browser is already retrying natively;
+        // when it succeeds it will emit the next event and we stay in sync.
       };
     }
 

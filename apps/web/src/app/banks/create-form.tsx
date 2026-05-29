@@ -1,7 +1,8 @@
 'use client';
 
-import { useActionState, useEffect, useMemo, useState } from 'react';
+import { useActionState, useEffect, useMemo, useState, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { Store, Globe, Eye, EyeOff, ChevronDown, Search, X, Bot } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { createBank, type BankFormResult } from './actions';
@@ -134,15 +135,16 @@ function PassInput({ name, placeholder, autoComplete = 'new-password' }: { name:
   );
 }
 
-function SubmitBtn() {
+function SubmitBtn({ refreshing }: { refreshing: boolean }) {
   const { pending } = useFormStatus();
+  const busy = pending || refreshing;
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={busy}
       className="mt-2 w-full rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-45"
     >
-      {pending ? 'Saving…' : 'Add profile'}
+      {pending ? 'Saving…' : refreshing ? 'Updating list…' : 'Add profile'}
     </button>
   );
 }
@@ -256,6 +258,8 @@ function BankTypePicker({ value, onChange }: { value: BankType | null; onChange:
 // ── Main form ─────────────────────────────────────────────────────────────────
 
 export function CreateBankForm() {
+  const router = useRouter();
+  const [refreshing, startRefresh] = useTransition();
   const [state, action] = useActionState(createBank, null as BankFormResult | null);
   const [bank, setBank] = useState<BankType | null>(null);
   const [profileKey, setProfileKey] = useState('');
@@ -263,12 +267,15 @@ export function CreateBankForm() {
   useEffect(() => {
     if (!state) return;
     if (state.ok) {
-      toast.success('Profile saved', { id: 'bank-create', description: 'Visible in Run Session.' });
+      toast.success('Profile saved', { id: 'bank-create', description: 'Profile added to directory.' });
       setBank(null);
       setProfileKey('');
+      // Refresh the server component so the directory list shows the new profile.
+      startRefresh(() => router.refresh());
       return;
     }
     toast.error('Could not save', { id: 'bank-create-err', description: state.message });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   const handleBankChange = (b: BankType | null) => {
@@ -360,7 +367,7 @@ export function CreateBankForm() {
             />
           </div>
 
-          <SubmitBtn />
+          <SubmitBtn refreshing={refreshing} />
         </form>
 
         {state?.ok === false && (

@@ -4,6 +4,7 @@
  */
 const DOMAIN_BY_PREFIX: [string, string][] = [
   ['GOOGLE', 'pay.google.com'],
+  ['PAYTM', 'paytm.com'],
   ['TP_PHONEPE', 'phonepe.com'],
   ['PHONEPE', 'phonepe.com'],
   ['TP_IOB', 'iob.in'],
@@ -22,6 +23,7 @@ const DOMAIN_BY_PREFIX: [string, string][] = [
 export function domainForProfileKey(profileKey: string): string | null {
   const u = profileKey.toUpperCase();
   if (u.includes('GOOGLE')) return 'pay.google.com';
+
   for (const [prefix, domain] of DOMAIN_BY_PREFIX) {
     if (u.startsWith(prefix)) return domain;
   }
