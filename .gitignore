@@ -12,3 +12,6 @@ apps/worker/__pycache__/
 **/.env.local
 **/.env.*.local
 !**/.env.example
+**/.next/
+**/.venv/
+**/__pycache__/
